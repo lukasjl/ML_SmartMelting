@@ -1,13 +1,16 @@
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$InputJson,
-    [Parameter(Mandatory=$true)]
-    [string]$OutputJson,
+    [string]$InputJson = $env:SMARTWELD_INPUT_JSON,
+    [string]$OutputJson = $env:SMARTWELD_OUTPUT_JSON,
     [string]$MatlabExe = "matlab.exe",
     [string]$MatlabFunction = "smartweld_batch_entry"
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($InputJson) -or [string]::IsNullOrWhiteSpace($OutputJson)) {
+    throw "SMARTWELD_INPUT_JSON and SMARTWELD_OUTPUT_JSON must be supplied."
+}
+
 $inputFull = (Resolve-Path $InputJson).Path
 $outputFull = [System.IO.Path]::GetFullPath($OutputJson)
 $workDir = Split-Path -Parent $outputFull
