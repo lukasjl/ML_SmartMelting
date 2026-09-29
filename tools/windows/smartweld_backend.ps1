@@ -19,6 +19,22 @@ if (-not (Test-Path $workDir)) {
     New-Item -ItemType Directory -Path $workDir | Out-Null
 }
 
+$request = Get-Content -Raw -Path $inputFull | ConvertFrom-Json
+
+function Get-RequiredValue($object, [string[]]$names) {
+    foreach ($name in $names) {
+        $p = $object.PSObject.Properties[$name]
+        if ($null -ne $p -and $null -ne $p.Value) { return $p.Value }
+    }
+    throw "Required SmartWeld input missing. Accepted names: $($names -join ', ')"
+}
+
+$env:SMARTWELD_POWER_W = [string](Get-RequiredValue $request @("power_W","laser_power_W","power"))
+$env:SMARTWELD_TRAVEL_SPEED_MM_S = [string](Get-RequiredValue $request @("travel_speed_mm_s","scan_speed_mm_s","travel_speed"))
+$env:SMARTWELD_SPOT_DIAMETER_CM = [string](Get-RequiredValue $request @("spot_diameter_cm","laser_spot_diameter_cm","spot_diameter"))
+$env:SMARTWELD_MATERIAL = [string](Get-RequiredValue $request @("material","alloy"))
+$env:SMARTWELD_SHIELDING_GAS = [string](Get-RequiredValue $request @("shielding_gas","gas"))
+
 $mfiles = Join-Path $env:USERPROFILE "SmartWeld\Mfiles"
 if (-not (Test-Path $mfiles)) {
     throw "SmartWeld M-files not found at $mfiles. Run bootstrap_smartweld.ps1 first."
