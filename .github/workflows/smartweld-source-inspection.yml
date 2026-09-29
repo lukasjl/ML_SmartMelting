@@ -1,0 +1,45 @@
+name: SmartWeld source inspection
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/windows/**"
+      - ".github/workflows/smartweld-source-inspection.yml"
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official SmartWeld M-files
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://sourceforge.net/projects/smartweld/files/Smartweld_Mfiles_12Mar2012.zip/download"
+          curl -L --fail --retry 3 "$url" -o Smartweld_Mfiles_12Mar2012.zip
+          echo "46714ca97f740e1430e17f0265d97e7b5a909f790ac60df91cf8d157a8fb6008  Smartweld_Mfiles_12Mar2012.zip" | sha256sum -c -
+
+      - name: Extract and inspect source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf smartweld_source
+          mkdir smartweld_source
+          unzip -q Smartweld_Mfiles_12Mar2012.zip -d smartweld_source
+
+          {
+            echo "SmartWeld M-files source inventory"
+            echo
+            find smartweld_source -type f | sort
+            echo
+            echo "Function declarations:"
+            grep -R -n -E '^[[:space:]]*function[[:space:]]' smartweld_source --include='*.m' || true
+          } | tee smartweld_source_inventory.txt
+
+      - name: Upload source inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartweld-source-inventory
+          path: smartweld_source_inventory.txt
