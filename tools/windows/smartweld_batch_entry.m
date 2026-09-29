@@ -1,8 +1,9 @@
 function smartweld_batch_entry()
 %SMARTWELD_BATCH_ENTRY Stable bridge point for the Python adapter.
 %
-% This file deliberately does NOT call an undocumented SmartWeld solver.
-% The original source/API must be inspected before a batch call is enabled.
+% The original source has now been recovered through the verified
+% SmartWeld M-files archive. The solver-specific binding remains isolated
+% here until its complete runtime initialization path is validated.
 
 infile = getenv('SMARTWELD_INPUT_JSON');
 outfile = getenv('SMARTWELD_OUTPUT_JSON');
