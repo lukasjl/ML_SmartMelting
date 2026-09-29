@@ -40,11 +40,11 @@ jobs:
           } | tee smartweld_source_inventory.txt
 
           mkdir -p smartweld_targeted_source
-          for f in main.m queryfunc.m oslw_gui.m oslw_gui_callbacks.m oslw_gui_layout.m schedulermodels.m computeScheduleArray.m mat_file.m mcquery.m runscript.m; do
+          for f in main.m runscript.m app_specific_data.m setAppFlags.m defaultcases.m makeuserdatastructs.m queryfunc.m oslw_gui.m oslw_gui_callbacks.m oslw_gui_layout.m schedulermodels.m computeScheduleArray.m computeAuxiliaryIO.m mat_file.m mcquery.m; do
             cp "$root/$f" smartweld_targeted_source/
           done
 
-      - name: Upload source inventory and targeted source
+      - name: Upload source analysis
         uses: actions/upload-artifact@v4
         with:
           name: smartweld-source-analysis
