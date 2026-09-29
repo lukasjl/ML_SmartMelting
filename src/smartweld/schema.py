@@ -10,7 +10,7 @@ class SmartWeldRecord:
 
     run_id: str
     inputs: Dict[str, Any]
-    outputs: Dict[str, Any]
+    outputs: Any
     units: Dict[str, str] = field(default_factory=dict)
     generator_version: str = "0.1.0"
     smartweld_version: Optional[str] = None
