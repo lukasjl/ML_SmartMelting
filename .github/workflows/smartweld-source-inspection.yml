@@ -28,18 +28,26 @@ jobs:
           rm -rf smartweld_source
           mkdir smartweld_source
           unzip -q Smartweld_Mfiles_12Mar2012.zip -d smartweld_source
+          root="smartweld_source/Smartweld_Mfiles_12Mar2012"
 
           {
             echo "SmartWeld M-files source inventory"
             echo
-            find smartweld_source -type f | sort
+            find "$root" -type f | sort
             echo
             echo "Function declarations:"
-            grep -R -n -E '^[[:space:]]*function[[:space:]]' smartweld_source --include='*.m' || true
+            grep -R -n -E '^[[:space:]]*function[[:space:]]' "$root" --include='*.m' || true
           } | tee smartweld_source_inventory.txt
 
-      - name: Upload source inventory
+          mkdir -p smartweld_targeted_source
+          for f in main.m queryfunc.m oslw_gui.m oslw_gui_callbacks.m oslw_gui_layout.m schedulermodels.m computeScheduleArray.m mat_file.m mcquery.m runscript.m; do
+            cp "$root/$f" smartweld_targeted_source/
+          done
+
+      - name: Upload source inventory and targeted source
         uses: actions/upload-artifact@v4
         with:
-          name: smartweld-source-inventory
-          path: smartweld_source_inventory.txt
+          name: smartweld-source-analysis
+          path: |
+            smartweld_source_inventory.txt
+            smartweld_targeted_source/
