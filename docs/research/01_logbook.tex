@@ -1,0 +1,130 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,booktabs,longtable}
+\usepackage{hyperref}
+\title{Research Logbook: SmartWeld OSLW Reconstruction and Physics-Informed ML}
+\author{Andrey Ni}
+\date{30 September 2026}
+\begin{document}
+\maketitle
+\section*{Purpose}
+This logbook records source provenance, reconstruction decisions, numerical evidence,
+open problems, and research tasks for reconstruction of the SmartWeld 3.0 OSLW model
+distributed in the 12 March 2012 MATLAB M-files release.
+\section*{Evidence classes}
+\begin{description}
+\item[Source] Directly supported by recovered SmartWeld source or official distribution.
+\item[Regression] Reproduced against an original SmartWeld GUI output.
+\item[Reconstruction] Independently implemented from source-derived equations.
+\item[Inference] Interpretation requiring explicit qualification.
+\item[Proposal] Future work not yet validated.
+\end{description}
+\section{Research problem}
+The project investigates whether a historical physics-based welding model can be
+recovered from legacy scientific software, independently reproduced, and exposed as
+a reproducible computational component for modern machine-learning and optimization.
+The immediate target is OSLW (Optimized Single-pass Laser Welding). The longer-term
+objective is a physics-informed workflow for laser processing and, after independent
+validation, DED.
+\section{Current evidence status}
+\begin{longtable}{p{0.27\textwidth}p{0.18\textwidth}p{0.47\textwidth}}
+\toprule Task & Status & Evidence\\ \midrule
+Official 12 Mar 2012 M-files archive & verified & Official SmartWeld SourceForge distribution; checksum recorded.\\
+Standalone executable & verified & Supplied SmartWeld-1March2012.exe.\\
+OSLW call chain & recovered & \texttt{app\_specific\_data} $\rightarrow$ \texttt{schedulermodels} $\rightarrow$ \texttt{queryfunc}.\\
+Forward equations & reconstructed & Normalization, material constants, gas coefficients, penetration, ETE, melting efficiency, width and sensitivity.\\
+Forward validation & verified for 2 cases & Historical GUI outputs reproduced to printed precision.\\
+Exact inverse GUI reproduction & incomplete & \texttt{computeScheduleArray} depends on contour generation; \texttt{ccontours.m} remains unresolved.\\
+ML model & proposed & No ML performance result is claimed.\\
+DED extension & proposed & OSLW is not treated as a validated DED model.\\
+\bottomrule
+\end{longtable}
+\section{Recovered OSLW equations}
+The source normalizes process variables:
+\begin{equation}
+s_P=P/1600,\qquad s_V=V/120,\qquad s_d=d/0.0294.
+\end{equation}
+For 304 stainless steel:
+\begin{equation}
+\alpha_s=5.18/110,\qquad \Delta h_s=9.41/11.8.
+\end{equation}
+For argon:
+\begin{align}
+C_1&=0.9015503591510303,&C_2&=0.6327730407815897,&C_3&=0.2582188708198456,\\
+C_8&=29.32835498219138,&C_9&=0.2903225193306445,&C_{10}&=0.3160507149639552.
+\end{align}
+Penetration:
+\begin{equation}
+p_s=\frac{\alpha_s C_8(s_P/[s_d^{C_{10}}s_V^{C_9}])}{5}.
+\end{equation}
+Energy-transfer efficiency:
+\begin{equation}
+\eta_{\mathrm{ET},s}=
+\frac{C_1-C_2^{\pi/[2\arctan(C_3s_d/p_s)]}}{0.952}.
+\end{equation}
+The source then evaluates
+\begin{equation}
+Ry_s=\frac{s_P\eta_{\mathrm{ET},s}s_V}{\alpha_s^2\Delta h_s},
+\qquad
+Ry=Ry_s\frac{1600\cdot120\cdot0.952}{110^2\cdot11.8},
+\end{equation}
+and
+\begin{equation}
+\eta_m=0.48-0.29e^{-Ry/6.82}-0.17e^{-Ry/58.8}.
+\end{equation}
+Area is evaluated as
+\begin{equation}
+A_s=\frac{Ry\eta_m\alpha_s^2}{s_V^2},
+\qquad A=A_s(110/120)^2.
+\end{equation}
+\section{Regression cases}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule Quantity & Case 1 & Case 2\\ \midrule
+Material & 304 stainless & 304 stainless\\
+Gas & Ar & Ar\\
+Power (W) & 685.000000 & 786.666667\\
+Speed (mm/s) & 53.082625 & 52.839095\\
+Spot (cm) & 0.011800 & 0.011800\\
+Target penetration (mm) & 1.000 & 1.150\\
+Reported penetration (mm) & 0.999860 & 1.149791\\
+Width (mm) & 0.625687 & 0.678073\\
+ETE & 0.679181 & 0.718454\\
+Melting efficiency & 0.447787 & 0.457256\\
+Sensitivity ($\mu$m/W) & 1.459649 & 1.461599\\
+\bottomrule
+\end{tabular}
+\end{center}
+The independent forward reconstruction reproduces these values to the precision
+printed by the historical GUI outputs.
+\section{Inverse-solver issue}
+The recovered GUI path calls \texttt{computeScheduleArray}. In depth-only mode it
+selects the midpoint of a returned process contour before evaluating
+\texttt{queryfunc}. Therefore the historical inverse result cannot be replaced by
+an assumed continuous optimization objective. Recovering \texttt{ccontours.m} is
+the next critical source-recovery target.
+\section{Research tasks}
+\begin{enumerate}
+\item Source completeness: recover \texttt{ccontours.m}, verify inventory, freeze archive hash.
+\item Numerical reproducibility: deterministic regression tests and broader parameter grid.
+\item Physics-based dataset: source-valid DOE with complete metadata.
+\item Machine learning: baseline and physics-informed surrogates with uncertainty estimation.
+\item Experimental transfer: map to laser/DED hardware and validate experimentally.
+\end{enumerate}
+\section{Publication decision rules}
+The first preprint may claim source-level reconstruction of the OSLW forward model,
+two-case numerical reproduction, documented inverse-workflow analysis, and a
+reproducible framework for later physics-informed ML. It should not claim complete
+inverse-GUI reproduction before \texttt{ccontours.m} is recovered, experimentally
+validated ML improvement before ML experiments exist, or a validated DED model from
+OSLW alone.
+\section{Change log}
+\begin{longtable}{p{0.15\textwidth}p{0.12\textwidth}p{0.63\textwidth}}
+\toprule Date & Version & Entry\\ \midrule
+2026-09-30 & 0.1 & Initial publication logbook; forward reconstruction and two-case regression established; inverse contour reconstruction remains open.\\
+\bottomrule
+\end{longtable}
+\end{document}

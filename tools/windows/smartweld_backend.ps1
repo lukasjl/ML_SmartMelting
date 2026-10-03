@@ -1,0 +1,63 @@
+param(
+    [string]$InputJson = $env:SMARTWELD_INPUT_JSON,
+    [string]$OutputJson = $env:SMARTWELD_OUTPUT_JSON,
+    [string]$MatlabExe = "matlab.exe",
+    [string]$MatlabFunction = "smartweld_batch_entry"
+)
+
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($InputJson) -or [string]::IsNullOrWhiteSpace($OutputJson)) {
+    throw "SMARTWELD_INPUT_JSON and SMARTWELD_OUTPUT_JSON must be supplied."
+}
+
+$inputFull = (Resolve-Path $InputJson).Path
+$outputFull = [System.IO.Path]::GetFullPath($OutputJson)
+$workDir = Split-Path -Parent $outputFull
+
+if (-not (Test-Path $workDir)) {
+    New-Item -ItemType Directory -Path $workDir | Out-Null
+}
+
+$request = Get-Content -Raw -Path $inputFull | ConvertFrom-Json
+
+function Get-RequiredValue($object, [string[]]$names) {
+    foreach ($name in $names) {
+        $p = $object.PSObject.Properties[$name]
+        if ($null -ne $p -and $null -ne $p.Value) { return $p.Value }
+    }
+    throw "Required SmartWeld input missing. Accepted names: $($names -join ', ')"
+}
+
+$env:SMARTWELD_POWER_W = [string](Get-RequiredValue $request @("power_W","laser_power_W","power"))
+$env:SMARTWELD_TRAVEL_SPEED_MM_S = [string](Get-RequiredValue $request @("travel_speed_mm_s","scan_speed_mm_s","travel_speed"))
+$env:SMARTWELD_SPOT_DIAMETER_CM = [string](Get-RequiredValue $request @("spot_diameter_cm","laser_spot_diameter_cm","spot_diameter"))
+$env:SMARTWELD_MATERIAL = [string](Get-RequiredValue $request @("material","alloy"))
+$env:SMARTWELD_SHIELDING_GAS = [string](Get-RequiredValue $request @("shielding_gas","gas"))
+
+$mfiles = Join-Path $env:USERPROFILE "SmartWeld\Mfiles"
+if (-not (Test-Path $mfiles)) {
+    throw "SmartWeld M-files not found at $mfiles. Run bootstrap_smartweld.ps1 first."
+}
+
+$inventory = Join-Path $mfiles "smartweld_source_inventory.txt"
+if (-not (Test-Path $inventory)) {
+    & $MatlabExe -batch "addpath(genpath('$($mfiles.Replace("'","''"))')); inspect_smartweld"
+    if ($LASTEXITCODE -ne 0) { throw "MATLAB source inventory failed." }
+}
+
+$env:SMARTWELD_INPUT_JSON = $inputFull
+$env:SMARTWELD_OUTPUT_JSON = $outputFull
+
+$escapedMfiles = $mfiles.Replace("'", "''")
+$escapedFunction = $MatlabFunction.Replace("'", "''")
+$cmd = "addpath(genpath('$escapedMfiles')); feval('$escapedFunction'); exit"
+
+& $MatlabExe -batch $cmd
+if ($LASTEXITCODE -ne 0) {
+    throw "MATLAB SmartWeld backend failed with exit code $LASTEXITCODE."
+}
+if (-not (Test-Path $outputFull)) {
+    throw "MATLAB completed but did not create output JSON: $outputFull"
+}
+Write-Host "SmartWeld output: $outputFull"

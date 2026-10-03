@@ -1,0 +1,29 @@
+{
+  "run_id": "oslw_304_ar_685W_v53p082625_spot0p0118",
+  "inputs": {
+    "power_W": 685.0,
+    "travel_speed_mm_s": 53.082625,
+    "spot_diameter_cm": 0.0118,
+    "material": "304 stainless",
+    "shielding_gas": "argon"
+  },
+  "expected": {
+    "energy_transfer_efficiency": 0.679181,
+    "melting_efficiency": 0.447787,
+    "weld_width_mm": 0.625687,
+    "penetration_depth_mm": 0.99986,
+    "penetration_sensitivity_um_per_W": 1.459649
+  },
+  "additional_reference": {
+    "focusing_lens_in": 2.5,
+    "defocus_length_mm": 0.0,
+    "net_power_W": 465.2391,
+    "linear_heat_input_J_per_mm": 8.7644,
+    "beam_irradiance_MW_per_cm2": 6.2638
+  },
+  "validation": {
+    "source": "Original SmartWeld OSLW GUI output supplied by user on 2026-09-30",
+    "purpose": "Numerical regression fixture for the SmartWeld Windows/MATLAB backend",
+    "note": "Expected values are transcribed from the supplied OSLW output file; they are not independently recomputed."
+  }
+}

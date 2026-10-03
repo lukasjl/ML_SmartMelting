@@ -1,0 +1,198 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{hyperref}
+\title{Reconstructing the SmartWeld OSLW Physics Model: A Reproducible Forward Model and a Framework for Physics-Informed Machine Learning}
+\author{Andrey Ni}
+\date{Preprint draft v0.1 --- 30 September 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+This study reconstructs the OSLW (Optimized Single-pass Laser Welding) model
+distributed with SmartWeld 3.0 in the 12 March 2012 MATLAB M-files release.
+The work addresses reproducibility of legacy scientific software by recovering
+the model structure, normalization, coefficients, and numerical behavior. The
+recovered forward path includes process-variable normalization, material
+parameters, shielding-gas coefficients, penetration depth, energy-transfer
+efficiency, melting efficiency, weld width, and penetration sensitivity. An
+independent implementation reproduces two historical SmartWeld GUI cases for
+304 stainless steel under argon shielding to the printed precision of the
+original outputs. The historical inverse workflow is treated separately because
+its contour-generation dependency, \texttt{ccontours.m}, has not yet been
+recovered into the targeted source artifact. The validated forward model is
+proposed as a physics-based prior for design of experiments, surrogate modelling,
+constrained optimization, and later experimental research.
+\end{abstract}
+\section{Introduction}
+Legacy scientific software may contain calibrated physical models whose numerical
+behavior is difficult to reproduce outside the original executable. Reproducibility
+requires explicit mathematical structure, normalization, coefficients, parameter
+domain, and selection logic. This study uses SmartWeld 3.0 OSLW as a case study.
+\subsection{Objectives}
+The work addresses five tasks: recovery of the OSLW forward model; documentation
+of normalization and parameter conventions; independent implementation; historical
+GUI validation; and definition of a controlled interface for physics-informed ML
+and optimization.
+\subsection{Research questions}
+Can the OSLW forward model be reconstructed unambiguously? Does the independent
+implementation reproduce original GUI outputs? Which parts of the inverse workflow
+are source-reproducible? Can the recovered model serve as a deterministic physics
+prior for ML? What additional evidence is required before extension to DED?
+\section{Source Provenance and Software Archaeology}
+The investigated release is the 12 March 2012 SmartWeld M-files distribution.
+The standalone application was generated with MATLAB 2010a. The recovered OSLW
+forward call chain is
+\begin{equation}
+\boxed{\texttt{app\_specific\_data}\rightarrow
+\texttt{schedulermodels}\rightarrow\texttt{queryfunc}}.
+\end{equation}
+The model depends on global application state, material normalization, gas
+selection, spot diameter, and output scaling.
+\section{Mathematical Reconstruction}
+\subsection{Input and material normalization}
+\begin{equation}
+s_P=P/1600,\qquad s_V=V/120,\qquad s_d=d/0.0294.
+\end{equation}
+For 304 stainless steel:
+\begin{equation}
+\alpha_s=5.18/110,\qquad \Delta h_s=9.41/11.8.
+\end{equation}
+For argon:
+\begin{align}
+C_1&=0.9015503591510303,& C_2&=0.6327730407815897,& C_3&=0.2582188708198456,\\
+C_8&=29.32835498219138,& C_9&=0.2903225193306445,& C_{10}&=0.3160507149639552.
+\end{align}
+\subsection{Penetration}
+\begin{equation}
+p_s=\frac{\alpha_sC_8(s_P/[s_d^{C_{10}}s_V^{C_9}])}{5}.
+\end{equation}
+\subsection{Energy-transfer efficiency}
+\begin{equation}
+\eta_{\mathrm{ET},s}=
+\frac{C_1-C_2^{\pi/[2\arctan(C_3s_d/p_s)]}}{0.952}.
+\end{equation}
+\subsection{$Ry$ parameter and melting efficiency}
+\begin{equation}
+Ry_s=\frac{s_P\eta_{\mathrm{ET},s}s_V}{\alpha_s^2\Delta h_s},
+\qquad
+Ry=Ry_s\frac{1600\cdot120\cdot0.952}{110^2\cdot11.8},
+\end{equation}
+\begin{equation}
+\eta_m=0.48-0.29e^{-Ry/6.82}-0.17e^{-Ry/58.8}.
+\end{equation}
+\subsection{Weld width}
+The source evaluates
+\begin{equation}
+A_s=\frac{Ry\eta_m\alpha_s^2}{s_V^2},
+\qquad A=A_s(110/120)^2,
+\end{equation}
+followed by source-defined output scaling in \texttt{queryfunc}.
+\subsection{Penetration sensitivity}
+\begin{equation}
+\frac{\partial p}{\partial P}=
+\frac{\alpha_sC_8}{1600s_d^{C_{10}}s_V^{C_9}}.
+\end{equation}
+\section{Independent Implementation}
+The computational sequence is
+\begin{equation}
+(P,V,d)\rightarrow(s_P,s_V,s_d)\rightarrow
+p,\eta_{\mathrm{ET}},Ry,\eta_m,w,\partial p/\partial P.
+\end{equation}
+No parameter fitting is introduced in this reconstruction.
+\section{Validation}
+For Case 1, 304 stainless steel, argon, $d=0.0118$ cm:
+\begin{equation}
+P=685.000000~\mathrm{W},\qquad V=53.082625~\mathrm{mm/s}.
+\end{equation}
+The historical output reports
+\begin{align}
+p&=0.999860~\mathrm{mm},&w&=0.625687~\mathrm{mm},\\
+\eta_{\mathrm{ET}}&=0.679181,&\eta_m&=0.447787,\\
+\partial p/\partial P&=1.459649~\mu\mathrm{m/W}.
+\end{align}
+For Case 2:
+\begin{equation}
+P=786.666667~\mathrm{W},\qquad V=52.839095~\mathrm{mm/s},
+\end{equation}
+with
+\begin{align}
+p&=1.149791~\mathrm{mm},&w&=0.678073~\mathrm{mm},\\
+\eta_{\mathrm{ET}}&=0.718454,&\eta_m&=0.457256,\\
+\partial p/\partial P&=1.461599~\mu\mathrm{m/W}.
+\end{align}
+\begin{table}[ht]
+\centering
+\caption{Historical SmartWeld OSLW regression cases.}
+\begin{tabular}{lcc}
+\hline
+Quantity & Case 1 & Case 2\\ \hline
+Power (W) & 685.000000 & 786.666667\\
+Speed (mm/s) & 53.082625 & 52.839095\\
+Penetration (mm) & 0.999860 & 1.149791\\
+Width (mm) & 0.625687 & 0.678073\\
+ETE & 0.679181 & 0.718454\\
+Melting efficiency & 0.447787 & 0.457256\\
+Sensitivity ($\mu$m/W) & 1.459649 & 1.461599\\ \hline
+\end{tabular}
+\end{table}
+The reconstructed forward model reproduces the historical values to the printed
+precision. This is the present numerical validation result.
+\section{Historical Inverse Workflow}
+The recovered GUI code shows that depth-only mode obtains a process contour and
+selects its midpoint before evaluating \texttt{queryfunc}. Thus the historical
+GUI solution depends on contour-generation implementation. The exact
+\texttt{ccontours.m} source remains the critical unresolved dependency.
+\section{Physics-Informed Machine-Learning Framework}
+The proposed research cycle is
+\begin{equation}
+\boxed{\mathrm{DOE}\rightarrow\mathrm{SmartWeld}\rightarrow
+\mathrm{dataset}\rightarrow\mathrm{surrogate}\rightarrow
+\mathrm{constrained\ optimization}\rightarrow\mathrm{experiment}\rightarrow
+\mathrm{update}}.
+\end{equation}
+The initial benchmark should predict penetration, width, energy-transfer efficiency,
+melting efficiency, and penetration sensitivity. Baseline data-driven surrogates
+should be compared with physics-informed or physics-constrained alternatives.
+Performance claims are reserved for actual benchmark calculations and experiments.
+\section{Extension Toward DED}
+SmartWeld OSLW is a laser-welding model. The present evidence does not establish
+direct SmartWeld variables for powder feed, deposition efficiency, nozzle geometry,
+stand-off distance, or layer-to-layer thermal history. Therefore
+\begin{equation}
+\text{SmartWeld physics prior}+
+\text{DED-specific variables}+
+\text{experimental data}
+\rightarrow\text{validated hybrid model}.
+\end{equation}
+\section{Limitations}
+The exact \texttt{ccontours.m} implementation is not yet recovered; the initial
+regression contains two historical GUI cases; the empirical validity domain must
+not be exceeded without validation; OSLW is not automatically a DED model; and
+ML/autonomous-experiment extensions remain proposed until tested.
+\section{Research Program}
+Phase I: source completeness and recovery of \texttt{ccontours.m}.\\
+Phase II: deterministic numerical reproducibility and inverse reconstruction.\\
+Phase III: physics-informed ML, uncertainty estimation and constrained optimization.\\
+Phase IV: experimental laser/DED validation.
+\section{Expected Contribution}
+The intended contribution is a reproducible methodology for recovering a historical
+physics-based scientific model and exposing it as a controlled computational prior
+for modern data-driven process optimization. The first preprint focuses on source
+reconstruction and numerical validation; ML and DED results will be added only when
+supported by actual calculations or experiments.
+\section{Conclusion}
+The SmartWeld OSLW forward model has been reconstructed from historical MATLAB
+source and independently reproduced for two historical GUI cases. The inverse
+workflow remains partially unresolved because its contour-generation dependency
+has not yet been recovered. The forward model provides a reproducible basis for a
+subsequent physics-informed ML benchmark, while extension to DED remains a separate
+validation problem.
+\appendix
+\section{Evidence Policy}
+Each manuscript statement should be internally classified as Source, Regression,
+Reconstruction, Inference, or Proposal. Only Source and Regression claims should
+be treated as established facts; Inference and Proposal claims remain qualified.
+\end{document}

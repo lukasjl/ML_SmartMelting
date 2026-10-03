@@ -1,0 +1,23 @@
+name: Python tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/smartweld-backend
+      - feature/smartweld-data-generator
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+      - name: Run tests
+        run: python -m pytest -q
