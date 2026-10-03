@@ -1,0 +1,34 @@
+name: Build research PDFs
+
+on:
+  pull_request:
+    paths:
+      - "docs/research/**.tex"
+      - ".github/workflows/build-research-pdfs.yml"
+  push:
+    branches:
+      - feature/smartweld-backend
+    paths:
+      - "docs/research/**.tex"
+      - ".github/workflows/build-research-pdfs.yml"
+  workflow_dispatch:
+
+jobs:
+  latex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile logbook and preprint
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: |
+            docs/research/01_logbook.tex
+            docs/research/02_preprint_draft.tex
+          latexmk_use_xelatex: false
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartweld-research-pdfs
+          path: |
+            docs/research/01_logbook.pdf
+            docs/research/02_preprint_draft.pdf
